@@ -5,6 +5,9 @@ import requests
 from datetime import datetime
 import anthropic
 
+# Google Apps Script URL
+SPREADSHEET_WEBHOOK = "https://script.google.com/macros/s/AKfycbxaAwqsszgBeOcuacwN9I54z9YtRzapVK1yUNLC9WCBThRVQKiisdqOZh8EjSHeJa8h/exec"
+
 SEARCH_QUERIES = [
     "AI Agent 採用 人材 2025",
     "AIエージェント 人事 HR",
@@ -98,6 +101,27 @@ def generate_posts(news):
     
     return json.loads(text)
 
+def send_to_spreadsheet(result):
+    """結果をGoogleスプレッドシートに送信"""
+    posts = result.get("posts", [])
+    
+    data = {
+        "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        "selected_news": result.get("selected_news", ""),
+        "selected_news_url": result.get("selected_news_url", ""),
+        "reason": result.get("reason", ""),
+        "post1": posts[0].get("text", "") if len(posts) > 0 else "",
+        "post2": posts[1].get("text", "") if len(posts) > 1 else "",
+        "post3": posts[2].get("text", "") if len(posts) > 2 else "",
+    }
+    
+    try:
+        r = requests.post(SPREADSHEET_WEBHOOK, json=data)
+        print(f"✅ スプレッドシートに送信完了")
+        print(f"   レスポンス: {r.text}")
+    except Exception as e:
+        print(f"❌ スプレッドシート送信エラー: {e}")
+
 def main():
     print(f"\n{'='*60}")
     print(f"🚀 AI採用ニュース → 投稿生成")
@@ -107,6 +131,10 @@ def main():
     print("📥 ニュース取得中...")
     news = fetch_news(SEARCH_QUERIES)
     print(f"   → {len(news)}件取得\n")
+    
+    if not news:
+        print("❌ ニュースが取得できませんでした")
+        return
     
     for i, n in enumerate(news, 1):
         print(f"   {i}. {n['title'][:50]}...")
@@ -126,6 +154,10 @@ def main():
         print("-" * 60)
         print(post.get("text"))
         print(f"\n→ {len(post.get('text', ''))}文字")
+    
+    # スプレッドシートに送信
+    print("\n📤 スプレッドシートに送信中...")
+    send_to_spreadsheet(result)
 
 if __name__ == "__main__":
     main()
