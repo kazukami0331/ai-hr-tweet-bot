@@ -1,9 +1,8 @@
 name: Deploy poker-range-checker to GitHub Pages
 
+# NOTE: リポジトリの Settings → Pages → Source を「GitHub Actions」にすると動きます。
+# Pages未有効のうちは自動実行で失敗し続けるため、手動実行(workflow_dispatch)のみにしています。
 on:
-  push:
-    branches: [main, claude/poker-range-checker-app-8oed5h]
-    paths: ["poker-range-checker/**", ".github/workflows/deploy-pages.yml"]
   workflow_dispatch:
 
 permissions:
