@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>レンジ確認 - トーナメント基礎</title>
+<style>
+  :root {
+    --bg: #FAFAFA;
+    --card: #FFFFFF;
+    --text: #2B2D33;
+    --sub: #8A8D94;
+    --gold: #C49B38;
+    --gold-light: #F4EDDA;
+    --fold: #33353B;
+    --raise: #EA9999;
+    --call: #59B966;
+    --allin: #CA1261;
+    --table-green: #356547;
+    --unknown: #C9CBD1;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    max-width: 520px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding-bottom: 40px;
+  }
+  header {
+    display: flex; align-items: center; justify-content: center;
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bg); border-bottom: 1px solid #ECECEE;
+    padding: 14px 16px; gap: 8px;
+  }
+  header .back {
+    position: absolute; left: 12px; border: none; background: none;
+    font-size: 22px; color: var(--text); cursor: pointer; padding: 4px 10px;
+  }
+  header h1 { font-size: 17px; font-weight: 700; }
+  .breadcrumb {
+    font-size: 12px; color: var(--sub); padding: 12px 16px 0;
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  }
+  .page-title { font-size: 18px; font-weight: 700; padding: 8px 16px 4px; }
+  .bullets { padding: 0 16px 8px; }
+  .bullets div { font-size: 12.5px; color: var(--sub); line-height: 1.7; }
+  .card {
+    background: var(--card); border-radius: 14px; margin: 12px 16px;
+    padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+  .card h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .card .cond { font-size: 12px; color: var(--sub); line-height: 1.7; margin-bottom: 12px; }
+  .btn-row { display: flex; gap: 10px; }
+  .btn {
+    flex: 1; border: none; border-radius: 22px; padding: 11px 0;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .btn.secondary { background: var(--gold-light); color: #8A6D1F; }
+  .btn.primary { background: var(--gold); color: #fff; }
+  .btn.wide { width: 100%; flex: none; }
+  .notice {
+    margin: 12px 16px; padding: 10px 14px; border-radius: 10px;
+    background: #FFF4E0; color: #8A5B00; font-size: 12.5px; line-height: 1.6;
+  }
+  /* poker table */
+  .table-wrap { padding: 8px 16px 4px; }
+  .poker-table {
+    position: relative; width: 100%; aspect-ratio: 1.55; margin: 24px 0 8px;
+  }
+  .felt {
+    position: absolute; inset: 8% 12%;
+    background: var(--table-green); border-radius: 50%;
+    box-shadow: inset 0 0 0 5px #2C5039;
+  }
+  .pot {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    text-align: center; color: #fff;
+  }
+  .pot .lbl { font-size: 11px; opacity: .85; }
+  .pot .val { font-size: 20px; font-weight: 800; }
+  .seat {
+    position: absolute; transform: translate(-50%,-50%);
+    background: #3A3C42; color: #fff; border-radius: 10px;
+    padding: 5px 10px; text-align: center; min-width: 58px;
+    border: 1.5px solid #55575E; font-size: 12px; line-height: 1.35;
+    z-index: 2;
+  }
+  .seat .pos { font-weight: 700; font-size: 12px; }
+  .seat .stack { font-size: 12px; }
+  .seat.hero { background: var(--gold); border-color: #A98424; }
+  .seat.folded { opacity: .38; }
+  .seat .dealer {
+    position: absolute; top: -9px; right: -9px; width: 20px; height: 20px;
+    background: #fff; color: var(--gold); border: 1.5px solid var(--gold);
+    border-radius: 50%; font-size: 11px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .bet-chip {
+    position: absolute; transform: translate(-50%,-50%);
+    background: rgba(0,0,0,.55); color: #fff; border-radius: 12px;
+    font-size: 11px; font-weight: 700; padding: 3px 9px 3px 6px;
+    display: flex; align-items: center; gap: 4px; z-index: 3;
+  }
+  .bet-chip::before {
+    content: ""; width: 12px; height: 12px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #FF6B6B, #C62828);
+    border: 2px dashed rgba(255,255,255,.85);
+  }
+  /* grid */
+  .grid-wrap { padding: 4px 8px 0; }
+  .grid {
+    display: grid; grid-template-columns: repeat(13, 1fr); gap: 2px;
+  }
+  .cell {
+    aspect-ratio: 1; border-radius: 3px; overflow: hidden; position: relative;
+    display: flex; cursor: pointer;
+  }
+  .cell .seg { height: 100%; }
+  .cell .lbl {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: clamp(7px, 2.4vw, 11.5px); font-weight: 600;
+    text-shadow: 0 0 3px rgba(0,0,0,.35); pointer-events: none;
+  }
+  .cell.unknown { background: repeating-linear-gradient(45deg, var(--unknown), var(--unknown) 4px, #E4E5E9 4px, #E4E5E9 8px); }
+  .cell.unknown .lbl { color: #7A7D85; text-shadow: none; }
+  .cell.selected { outline: 2.5px solid #fff; outline-offset: -2.5px; box-shadow: 0 0 0 2px rgba(0,0,0,.25); z-index: 1; }
+  .legend {
+    display: flex; gap: 14px; flex-wrap: wrap; padding: 12px 16px 0;
+    font-size: 12px; color: var(--sub);
+  }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .hint {
+    margin: 14px 16px 0; border: 1px solid #E4E5E9; border-radius: 12px;
+    padding: 12px; text-align: center; font-size: 13px; color: var(--sub);
+    min-height: 66px; display: flex; flex-direction: column; justify-content: center; gap: 6px;
+  }
+  .hint .hand { font-size: 15px; font-weight: 700; color: var(--text); }
+  .hint .freqs { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+  .hint .freqs span { display: flex; align-items: center; gap: 5px; font-size: 13px; }
+  .hint .freqs i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+  .close-area { padding: 18px 16px 0; }
+  .theme-list-note { font-size: 11.5px; color: var(--sub); text-align: center; padding-top: 16px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="data.js"></script>
+<script>
+const ACTIONS = {
+  raise: { label: "レイズ", color: "var(--raise)" },
+  allin: { label: "オールイン", color: "var(--allin)" },
+  call:  { label: "コール", color: "var(--call)" },
+  fold:  { label: "フォールド", color: "var(--fold)" },
+};
+const RANKS = "AKQJT98765432".split("");
+const app = document.getElementById("app");
+
+function esc(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+function route() {
+  const h = location.hash.slice(1);
+  const m2 = h.match(/^theme\/(\d+)\/range\/(\d+)$/);
+  const m1 = h.match(/^theme\/(\d+)$/);
+  if (m2) return renderRange(+m2[1], +m2[2]);
+  if (m1) return renderTheme(+m1[1]);
+  renderHome();
+}
+
+function renderHome() {
+  const themes = RANGE_DATA.themes.map((t, i) => `
+    <div class="card">
+      <h3>${esc(t.name)}</h3>
+      <div class="cond">${t.ranges.length}個のレンジ表</div>
+      <div class="btn-row">
+        <button class="btn primary wide" onclick="location.hash='theme/${i}'">テーマ詳細</button>
+      </div>
+    </div>`).join("");
+  app.innerHTML = `
+    <header><h1>${esc(RANGE_DATA.course)}｜ドリル</h1></header>
+    ${themes}
+    <div class="theme-list-note">GLORY ACADEMY のレンジ表を再現したレンジ確認アプリ</div>`;
+  window.scrollTo(0, 0);
+}
+
+function renderTheme(ti) {
+  const t = RANGE_DATA.themes[ti];
+  const cards = t.ranges.map((r, ri) => `
+    <div class="card">
+      <h3>${esc(r.title)}</h3>
+      <div class="cond">${r.conditions.map(c => "・" + esc(c)).join("<br>")}</div>
+      <div class="btn-row">
+        <button class="btn secondary wide" onclick="location.hash='theme/${ti}/range/${ri}'">▦ レンジ表</button>
+      </div>
+    </div>`).join("");
+  app.innerHTML = `
+    <header>
+      <button class="back" onclick="location.hash=''">‹</button>
+      <h1>テーマ詳細</h1>
+    </header>
+    <div class="page-title">${esc(t.name)}</div>
+    ${cards}`;
+  window.scrollTo(0, 0);
+}
+
+// seat layout: hero bottom-center, others clockwise
+const SEAT_ORDER = ["UTG","UTG+1","LJ","HJ","CO","BTN","SB","BB"];
+// positions around ellipse (percentages of table-wrap), index 0 = bottom center, going clockwise
+const SEAT_XY = [
+  [50, 96], [15, 82], [4, 45], [22, 10], [50, 2], [78, 10], [96, 45], [85, 82]
+];
+function seatCoords(hero) {
+  const hi = SEAT_ORDER.indexOf(hero);
+  const map = {};
+  for (let k = 0; k < 8; k++) {
+    const pos = SEAT_ORDER[(hi + k) % 8];
+    map[pos] = SEAT_XY[k];
+  }
+  return map;
+}
+
+function renderTable(table) {
+  const coords = seatCoords(table.hero);
+  let seats = "", chips = "";
+  for (const pos of SEAT_ORDER) {
+    const s = table.seats[pos];
+    const [x, y] = coords[pos];
+    const cls = ["seat", pos === table.hero ? "hero" : "", s.folded ? "folded" : ""].join(" ");
+    const dealer = pos === table.dealer ? `<div class="dealer">D</div>` : "";
+    seats += `<div class="${cls}" style="left:${x}%;top:${y}%">${dealer}<div class="pos">${esc(pos)}</div><div class="stack">${s.stack}</div></div>`;
+    if (s.bet != null) {
+      const bx = x + (50 - x) * 0.42, by = y + (50 - y) * 0.42;
+      chips += `<div class="bet-chip" style="left:${bx}%;top:${by}%">${s.bet}</div>`;
+    }
+  }
+  return `
+    <div class="table-wrap"><div class="poker-table">
+      <div class="felt"></div>
+      <div class="pot"><div class="lbl">Pot</div><div class="val">${table.pot} bb</div></div>
+      ${seats}${chips}
+    </div></div>`;
+}
+
+function handName(i, j) {
+  if (i === j) return RANKS[i] + RANKS[i];
+  if (i < j) return RANKS[i] + RANKS[j] + "s";
+  return RANKS[j] + RANKS[i] + "o";
+}
+
+let selectedCell = null;
+function renderRange(ti, ri) {
+  const t = RANGE_DATA.themes[ti];
+  const r = t.ranges[ri];
+  selectedCell = null;
+  let cells = "";
+  let missing = 0;
+  for (let i = 0; i < 13; i++) {
+    for (let j = 0; j < 13; j++) {
+      const h = handName(i, j);
+      const segs = r.hands[h];
+      if (!segs) {
+        missing++;
+        cells += `<div class="cell unknown" data-hand="${h}"><span class="lbl">${h}</span></div>`;
+        continue;
+      }
+      const inner = segs.map(s =>
+        `<div class="seg" style="width:${(s.f * 100).toFixed(2)}%;background:${ACTIONS[s.a].color}"></div>`).join("");
+      cells += `<div class="cell" data-hand="${h}">${inner}<span class="lbl">${h}</span></div>`;
+    }
+  }
+  const missingNote = missing ? `
+    <div class="notice">⚠ ハッチ表示の${missing}セルはスクリーンショットの画面外で未取得です(推測で埋めていません)。該当画面を下までスクロールしたスクショを追加すると反映できます。</div>` : "";
+  app.innerHTML = `
+    <header>
+      <button class="back" onclick="location.hash='theme/${ti}'">‹</button>
+      <h1>レンジ表</h1>
+    </header>
+    <div class="breadcrumb">🎓 ${esc(RANGE_DATA.course)} / ${esc(t.name)}</div>
+    <div class="page-title">${esc(r.title)}</div>
+    <div class="bullets">${r.conditions.map(c => `<div>・${esc(c)}</div>`).join("")}</div>
+    ${renderTable(r.table)}
+    ${missingNote}
+    <div class="grid-wrap"><div class="grid" id="grid">${cells}</div></div>
+    <div class="legend">
+      <span><i style="background:var(--raise)"></i>レイズ</span>
+      <span><i style="background:var(--allin)"></i>オールイン</span>
+      <span><i style="background:var(--call)"></i>コール</span>
+      <span><i style="background:var(--fold)"></i>フォールド</span>
+    </div>
+    <div class="hint" id="hint">セルをタップしてハンド詳細を確認</div>
+    <div class="close-area"><button class="btn primary wide" onclick="location.hash='theme/${ti}'">閉じる</button></div>`;
+  document.getElementById("grid").addEventListener("click", e => {
+    const cell = e.target.closest(".cell");
+    if (!cell) return;
+    if (selectedCell) selectedCell.classList.remove("selected");
+    selectedCell = cell;
+    cell.classList.add("selected");
+    showHint(r, cell.dataset.hand);
+  });
+  window.scrollTo(0, 0);
+}
+
+function showHint(r, hand) {
+  const hint = document.getElementById("hint");
+  const segs = r.hands[hand];
+  if (!segs) {
+    hint.innerHTML = `<div class="hand">${hand}</div><div>スクリーンショット未取得のため不明</div>`;
+    return;
+  }
+  // merge same-action segments for display
+  const agg = {};
+  for (const s of segs) agg[s.a] = (agg[s.a] || 0) + s.f;
+  const order = ["raise", "allin", "call", "fold"];
+  const freqs = order.filter(a => agg[a] >= 0.005).map(a =>
+    `<span><i style="background:${ACTIONS[a].color}"></i>${ACTIONS[a].label} ${(agg[a] * 100).toFixed(1)}%</span>`).join("");
+  hint.innerHTML = `<div class="hand">${hand}</div><div class="freqs">${freqs}</div>`;
+}
+
+window.addEventListener("hashchange", route);
+route();
+</script>
+</body>
+</html>
